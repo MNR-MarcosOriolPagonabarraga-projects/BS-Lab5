@@ -1,0 +1,72 @@
+\section{Template Matching}
+
+\subsection{Background and Template Extraction}
+The objective of this section is the detection of \textbf{Spike-and-Wave Complexes (SWC)} in EEG signals. An SWC is characterized by a sharp spike followed by a slow wave (approx. 3 Hz). To perform template matching, a representative SWC was manually extracted from channel \textbf{C3} within the time interval of 0.61s to 0.83s.
+
+Figure \ref{fig:template_ext} illustrates the original EEG signal from channel C3 and the isolated template. The template clearly exhibits the sharp negative deflection followed by the slower positive recovery wave typical of this complex.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/sec2_template_extraction.png}
+    \caption{Original EEG signal (top) and the extracted SWC template (bottom).}
+    \label{fig:template_ext}
+\end{figure}
+
+\subsection{Methodology}
+We utilized the \textbf{cross-correlation function (CCF)} to measure the similarity between the template and the continuous EEG signals. The process involved:
+\begin{enumerate}
+    \item Computing the cross-correlation between the signal and the template.
+    \item Normalizing the result to identify relative peaks effectively.
+    \item Applying a threshold to detect local maxima corresponding to SWC occurrences.
+    \item Correcting the time delay, as the cross-correlation peak corresponds to the alignment lag, effectively marking the end of the template match.
+\end{enumerate}
+
+The following MATLAB code snippet demonstrates the core logic applied to each channel:
+
+\begin{lstlisting}[caption={Cross-correlation and Peak Detection}, language=Matlab]
+% Cross-Correlation
+[corr_raw, lags] = xcorr(signal, template);
+
+% Normalize
+corr_norm = corr_raw / max(abs(corr_raw));
+
+% Peak Detection
+threshold = 0.2;
+[pks, locs] = findpeaks(corr_norm, 'MinPeakHeight', threshold);
+
+% Map lags to time for plotting
+lag_time = lags/fs;
+\end{lstlisting}
+
+\subsection{Results and Discussion}
+The template matching procedure was applied to the source channel (\textbf{C3}), a spatially close channel (\textbf{C4}), and a farther channel (\textbf{P4}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/sec2_ccf_c3.png}
+    \caption{Detection results for Channel C3 (Source). Top: Signal with markers; Bottom: Normalized CCF.}
+    \label{fig:res_c3}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/sec2_ccf_c4.png}
+    \caption{Detection results for Channel C4.}
+    \label{fig:res_c4}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/sec2_ccf_p4.png}
+    \caption{Detection results for Channel P4.}
+    \label{fig:res_p4}
+\end{figure}
+
+\subsubsection{Analysis of Detection}
+As observed in Figure \ref{fig:res_c3}, the correlation for \textbf{C3} reaches a maximum of 1.0 (at the location where the template was extracted). The periodic nature of the SWC is clearly visible in the CCF, with multiple peaks exceeding the 0.2 threshold.
+
+Figure \ref{fig:res_c4} shows the results for \textbf{C4}. The signal morphology is highly similar to C3, resulting in distinct correlation peaks. This suggests that the SWC activity is synchronized across the central region of the brain.
+
+Figure \ref{fig:res_p4} displays the results for the parietal channel \textbf{P4}. Although the waveform is slightly different due to spatial distance, the template matching algorithm remains robust. The normalized correlation still yields distinct peaks, allowing for the correct identification of the SWC events. 
+
+In all cases, the red markers on the EEG signals (top subplots) confirm that the algorithm successfully located the epileptic complexes, demonstrating that \textbf{template matching} is an effective method for event detection even when the signal morphology varies slightly across channels.

@@ -1,0 +1,85 @@
+\section{Matched Filtering}
+
+\subsection{Impulse Response Derivation}
+The matched filter is the optimal linear filter for maximizing the Signal-to-Noise Ratio (SNR) in the presence of stochastic noise. The impulse response $h(n)$ of a matched filter is the time-reversed version of the template signal $s(n)$.
+
+Figure \ref{fig:impulse_resp} displays the template extracted in the previous section and the derived impulse response. As expected, $h(n)$ is a mirrored version of $s(n)$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/sec3_impulse_response.png}
+    \caption{Top: The SWC template $s(n)$. Bottom: The matched filter impulse response $h(n) = s(-n)$.}
+    \label{fig:impulse_resp}
+\end{figure}
+
+\subsection{Linear Matched Filtering (Unnormalized)}
+We first applied the matched filter using the standard linear convolution method. The filter coefficients were defined as the reversed template ($b = h(n)$) and the denominator $a=1$.
+
+\begin{lstlisting}[caption={Linear Matched Filtering Implementation}, language=Matlab]
+% Derive Impulse Response
+h_t = fliplr(template); 
+
+% Apply FIR Filter
+matched_output = filter(h_t, 1, signal);
+\end{lstlisting}
+
+Figure \ref{fig:linear_c3} shows the result for channel C3. While the filter successfully highlights the periodic nature of the SWCs, the output amplitude is extremely high (in the order of $10^8$). This occurs because the standard convolution accumulates the product of the signal and template energies (effectively $K=1$). This unbounded output makes it difficult to set a universal detection threshold.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/sec3_matched_linear_c3.png}
+    \caption{Unnormalized matched filter output for C3. Note the large amplitude scale.}
+    \label{fig:linear_c3}
+\end{figure}
+
+\subsection{Normalized Matched Filtering (Time-Variant K)}
+To bound the output between -1 and 1 (similar to the normalized cross-correlation), we implemented a normalization factor $K$. Since the energy of the EEG signal changes over time, $K$ must be \textbf{time-variant}.
+
+The normalization factor at each sample is derived from the geometric mean of the template energy ($E_{template}$) and the local signal energy ($E_{local}$).
+
+\begin{lstlisting}[caption={Normalized Filtering with Time-Variant K}, language=Matlab]
+% Calculate Template Energy
+E_template = sum(template.^2);
+
+% Calculate Local Signal Energy
+ones_filter = ones(size(template));
+E_local = filter(ones_filter, 1, signal.^2);
+
+% Apply Normalization
+normalization_factor = sqrt(E_template * E_local);
+y_normalized = y_raw ./ normalization_factor;
+\end{lstlisting}
+
+\subsection{Results and Discussion}
+The normalized matched filter was applied to channels C3, C4, and P4. A threshold of 0.2 was used to detect the Spike-and-Wave Complexes.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/sec3_matched_normalized_c3.png}
+    \caption{Normalized Matched Filter output for Channel C3.}
+    \label{fig:norm_c3}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/sec3_matched_normalized_c4.png}
+    \caption{Normalized Matched Filter output for Channel C4.}
+    \label{fig:norm_c4}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/sec3_matched_normalized_p4.png}
+    \caption{Normalized Matched Filter output for Channel P4.}
+    \label{fig:norm_p4}
+\end{figure}
+
+\subsubsection{Analysis}
+The results demonstrate the equivalence between \textbf{normalized cross-correlation} (Section 2) and \textbf{normalized matched filtering} (Section 3).
+\begin{itemize}
+    \item \textbf{C3 (Source):} Figure \ref{fig:norm_c3} shows a perfect correlation of 1.0 at the template extraction point. The detected peaks align perfectly with the epileptic complexes.
+    \item \textbf{C4 (Close):} As seen in Figure \ref{fig:norm_c4}, the matched filter is highly robust, detecting SWCs with correlation values consistently above 0.5.
+    \item \textbf{P4 (Far):} Figure \ref{fig:norm_p4} shows that even in the parietal region, where the signal morphology differs slightly, the matched filter successfully identifies the events.
+\end{itemize}
+
+The matched filter approach, when properly normalized, provides a robust detection mechanism. The primary difference between this and the method in Section 2 is computational: Section 2 used `xcorr` (global computation), while Section 3 used `filter` (causal convolution), which is more suitable for real-time processing applications.

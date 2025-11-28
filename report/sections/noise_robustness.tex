@@ -1,0 +1,48 @@
+\subsection{Noise Robustness Analysis}
+
+\subsubsection{Methodology}
+To evaluate the robustness of the matched filter, we introduced additive stochastic noise to the EEG signal (Channel C3). We utilized White Gaussian Noise (AWGN) to simulate varying environmental conditions and sensor noise.
+
+The signal-to-noise ratio (SNR) was varied from \textbf{20 dB} (clean) down to \textbf{-5 dB} (very noisy). The matched filter was applied to each noisy instance to observe if the Spike-and-Wave Complexes (SWCs) remained detectable.
+
+The following code snippet demonstrates the injection of noise and the subsequent filtering:
+
+\begin{lstlisting}[caption={Adding Noise and Filtering}, language=Matlab]
+% Define SNR levels to test
+snr_values = [20, 15, 10, 5, 0, -5];
+
+for k = 1:length(snr_values)
+    current_snr = snr_values(k);
+    
+    % Add White Gaussian Noise
+    % 'measured' ensures the noise power is relative to the signal power
+    noisy_signal = awgn(c3_data, current_snr, 'measured');
+    
+    % Apply Normalized Matched Filter
+    y_raw = filter(h_t, 1, noisy_signal);
+    E_local = filter(ones(size(template)), 1, noisy_signal.^2);
+    y_norm = y_raw ./ sqrt(E_template * E_local);
+end
+\end{lstlisting}
+
+\subsubsection{Results and Discussion}
+Figure \ref{fig:noise_robustness} illustrates the degradation of the input signal (left column) and the corresponding filter output (right column) as the SNR decreases.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/sec3_noise_robustness.png}
+    \caption{Left: Noisy Input Signal at decreasing SNRs. Right: Matched Filter Output.}
+    \label{fig:noise_robustness}
+\end{figure}
+
+The results demonstrate the \textbf{optimality} of the matched filter in maximizing SNR:
+
+\begin{itemize}
+    \item \textbf{High SNR (20 dB - 10 dB):} The SWCs remain clearly visible in the time domain. The matched filter output is extremely clean, with peaks approaching 1.0. Detection is trivial in this range.
+    
+    \item \textbf{Critical SNR (0 dB):} At 0 dB, the power of the noise is equal to the power of the signal. In the time domain (left), the SWC morphology is heavily obscured. However, the matched filter (right) successfully suppresses the uncorrelated noise while amplifying the correlated template pattern. The peaks remain distinct and well above the detection threshold.
+    
+    \item \textbf{Low SNR (-5 dB):} At this level, the noise is stronger than the signal. Visually identifying the complex in the raw signal is challenging. Remarkably, the matched filter output still reveals periodic peaks corresponding to the SWC locations. Although the "noise floor" in the correlation output rises, the peaks generally remain distinguishable above the 0.2 threshold.
+\end{itemize}
+
+\textbf{Conclusion:} The matched filter proves to be highly robust. Because it performs a correlation integration, zero-mean Gaussian noise tends to average out over the duration of the template, whereas the coherent signal adds up constructively. This allows for reliable detection of epileptic events even in environments with significant background noise.
